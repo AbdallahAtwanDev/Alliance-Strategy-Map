@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import html2canvas from 'html2canvas';
+import { captureMapScreenshot, downloadCanvas } from './utils/captureMap.js';
 import { motion } from 'framer-motion';
 import Login from './components/Login.jsx';
 import Header from './components/Header.jsx';
@@ -173,29 +173,42 @@ function Dashboard() {
 
   const handleScreenshot = () => {
     setScreenshotBusy(true);
-    setTimeout(async () => {
-      const target = document.getElementById('capture-target');
-      if (!target) {
-        setScreenshotBusy(false);
-        return;
-      }
+    setTimeout(() => {
       try {
-        const canvas = await html2canvas(target, {
-          useCORS: true,
-          allowTaint: true,
-          scale: 2,
-          backgroundColor: '#030712',
+        const canvas = captureMapScreenshot({
+          tiles,
+          territories: { ...territories },
+          alliances,
+          markers: { ...markers },
+          allianceStats,
+          getTileLabel: translateTileType,
+          serverId,
+          markerLabels: {
+            attack: 'ATK',
+            defend: 'DEF',
+            target: 'TGT',
+          },
+          isRtl: t.dir === 'rtl',
+          labels: {
+            brandTitle: t.loginTitle,
+            brandSubtitle: t.loginSubtitle,
+            server: t.server,
+            exported: t.exportedAt,
+            leaderboard: t.leaderboard,
+            noStats: t.noTerritories,
+            tiles: t.tiles,
+            coal: t.coal,
+            rareSoil: t.rareSoil,
+          },
         });
-        const link = document.createElement('a');
-        link.download = `alliance-map-${serverId}-${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
+        downloadCanvas(canvas, `alliance-map-${serverId}-${Date.now()}.png`);
       } catch (err) {
         console.error(err);
+        alert(t.screenshotError);
       } finally {
         setScreenshotBusy(false);
       }
-    }, 150);
+    }, 200);
   };
 
   if (!auth?.loggedIn) {

@@ -51,6 +51,16 @@ export const DEFAULT_ALLIANCE_COLORS = [
   '#808080',
 ];
 
+export const ZONE_HEX = {
+  1: { bg: '#cfe2f3', border: '#9fc5e8', text: '#1f2937' },
+  2: { bg: '#fff2cc', border: '#ffe599', text: '#1f2937' },
+  3: { bg: '#d9ead3', border: '#b6d7a8', text: '#1f2937' },
+  4: { bg: '#e2d5e7', border: '#d5a6bd', text: '#1f2937' },
+  5: { bg: '#f4cccc', border: '#ea9999', text: '#1f2937' },
+  6: { bg: '#fce5cd', border: '#f9cb9c', text: '#1f2937' },
+};
+
+/** @deprecated use ZONE_HEX for inline styles */
 export const ZONE_STYLES = {
   1: { bg: 'bg-[#cfe2f3]', text: 'text-gray-800', border: 'border-[#9fc5e8]' },
   2: { bg: 'bg-[#fff2cc]', text: 'text-gray-800', border: 'border-[#ffe599]' },

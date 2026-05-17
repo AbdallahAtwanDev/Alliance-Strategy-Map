@@ -5,7 +5,7 @@ import {
   getTileIndex,
   GRID_SIZE,
   ROWS,
-  ZONE_STYLES,
+  ZONE_HEX,
 } from '../constants.js';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import MapToolbar from './MapToolbar.jsx';
@@ -187,8 +187,6 @@ export default function MapViewport({
     lastPinchDist.current = null;
   };
 
-  const tileSize = 'clamp(22px, 5.2vw, 52px)';
-  const labelSize = 'clamp(18px, 4vw, 28px)';
 
   return (
     <div className="order-1 flex min-w-0 flex-1 flex-col gap-2 lg:order-2">
@@ -227,18 +225,12 @@ export default function MapViewport({
               transition: isPanning ? 'none' : 'transform 0.15s ease-out',
             }}
           >
-            <div
-              className="grid gap-0 rounded-lg border border-cyan-800/20 bg-slate-900/30"
-              style={{
-                gridTemplateColumns: `${labelSize} repeat(${GRID_SIZE}, ${tileSize})`,
-                gridTemplateRows: `${labelSize} repeat(${GRID_SIZE}, ${tileSize})`,
-              }}
-            >
+            <div className="map-grid-inner grid gap-0 rounded-lg border border-[#164e63] bg-[#0f172a]">
               <div />
               {COLS.map((col) => (
                 <div
                   key={`col-${col}`}
-                  className="flex items-center justify-center text-[10px] font-bold text-cyan-500/90 sm:text-xs"
+                  className="map-axis-label flex items-center justify-center font-bold text-[#22d3ee]"
                 >
                   {col}
                 </div>
@@ -246,14 +238,14 @@ export default function MapViewport({
 
               {ROWS.map((row, rowIndex) => (
                 <Fragment key={row}>
-                  <div className="flex items-center justify-center text-[10px] font-bold text-cyan-500/90 sm:text-xs">
+                  <div className="map-axis-label flex items-center justify-center font-bold text-[#22d3ee]">
                     {row}
                   </div>
                   {COLS.map((_, colIndex) => {
                     const index = getTileIndex(rowIndex, colIndex);
                     const tile = tiles[index];
                     const coord = getCoordinate(rowIndex, colIndex);
-                    const zoneStyle = ZONE_STYLES[tile.zone];
+                    const zoneHex = ZONE_HEX[tile.zone];
                     const allianceId = territories[index];
                     const alliance = allianceId
                       ? getAllianceById(allianceId)
@@ -275,54 +267,55 @@ export default function MapViewport({
                           if (e.key === 'Enter') onTileClick(index);
                         }}
                         className={[
-                          'relative flex cursor-pointer flex-col items-center justify-center border p-0.5 text-center select-none touch-none',
-                          !alliance && isCapitol
-                            ? 'bg-white text-gray-900 border-gray-300'
-                            : !alliance
-                              ? [
-                                  zoneStyle.bg,
-                                  zoneStyle.text,
-                                  zoneStyle.border,
-                                ].join(' ')
-                              : '',
-                          isCapitol ? 'ring-1 ring-amber-400/80' : '',
-                          isSelected ? 'ring-2 ring-cyan-400 z-10' : '',
+                          'map-tile relative flex cursor-pointer flex-col items-center justify-center overflow-hidden border p-0 text-center select-none touch-none',
+                          isCapitol ? 'ring-1 ring-[#fbbf24]' : '',
+                          isSelected ? 'ring-2 ring-[#22d3ee] z-10' : '',
                           dimmed ? 'tile-filter-dim' : '',
-                          highlighted
-                            ? 'tile-highlight-match ring-2 ring-cyan-400'
-                            : '',
+                          highlighted ? 'tile-highlight-match ring-2 ring-[#22d3ee]' : '',
                         ].join(' ')}
                         style={
                           alliance
                             ? {
                                 backgroundColor: alliance.color,
-                                color: '#fff',
+                                color: '#ffffff',
                                 borderColor: 'rgba(255,255,255,0.35)',
                               }
-                            : undefined
+                            : isCapitol
+                              ? {
+                                  backgroundColor: '#ffffff',
+                                  color: '#111827',
+                                  borderColor: '#d1d5db',
+                                }
+                              : {
+                                  backgroundColor: zoneHex.bg,
+                                  color: zoneHex.text,
+                                  borderColor: zoneHex.border,
+                                }
                         }
                         title={coord}
                       >
                         {alliance && (
-                          <span className="absolute inset-x-0 top-0 truncate px-0.5 text-[6px] font-bold leading-tight drop-shadow-md sm:text-[7px]">
+                          <span className="map-tile-alliance absolute inset-x-0 top-0 w-full truncate px-px font-bold leading-none">
                             {alliance.name}
                           </span>
                         )}
                         {marker && (
-                          <span className="absolute end-0.5 top-0.5 text-xs drop-shadow-lg sm:text-sm">
+                          <span className="map-tile-marker absolute end-0 top-0 leading-none">
                             {t.markerEmoji[marker]}
                           </span>
                         )}
-                        <span
-                          className={`max-w-full truncate text-[6px] font-bold leading-tight sm:text-[8px] ${
+                        <div
+                          className={`map-tile-text-wrap flex w-full flex-col items-center justify-center ${
                             alliance ? 'mt-1.5 sm:mt-2' : ''
                           }`}
                         >
-                          {translateTileType(tile.type)}
-                        </span>
-                        <span className="text-[5px] opacity-70 sm:text-[6px]">
-                          {coord}
-                        </span>
+                          <span className="map-tile-type w-full truncate px-px font-semibold leading-none">
+                            {translateTileType(tile.type)}
+                          </span>
+                          <span className="map-tile-coord leading-none opacity-75">
+                            {coord}
+                          </span>
+                        </div>
                       </div>
                     );
                   })}

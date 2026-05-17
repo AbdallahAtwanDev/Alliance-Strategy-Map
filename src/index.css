@@ -92,6 +92,143 @@ body {
   cursor: grabbing;
 }
 
+/* Responsive map grid — fixed small cells on mobile */
+.map-grid-inner {
+  --map-label: 14px;
+  --map-tile: 22px;
+  grid-template-columns: var(--map-label) repeat(13, var(--map-tile)) !important;
+  grid-template-rows: var(--map-label) repeat(13, var(--map-tile)) !important;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+@media (min-width: 480px) {
+  .map-grid-inner {
+    --map-label: 18px;
+    --map-tile: 28px;
+  }
+}
+
+@media (min-width: 640px) {
+  .map-grid-inner {
+    --map-label: 22px;
+    --map-tile: 38px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .map-grid-inner {
+    --map-label: 26px;
+    --map-tile: 48px;
+  }
+}
+
+.map-axis-label {
+  font-size: 7px;
+  line-height: 1;
+  color: #22d3ee;
+}
+
+@media (min-width: 640px) {
+  .map-axis-label {
+    font-size: 10px;
+  }
+}
+
+.map-tile {
+  min-width: 0;
+  min-height: 0;
+}
+
+.map-tile-alliance {
+  font-size: 4px;
+  max-height: 6px;
+}
+
+.map-tile-type {
+  font-size: 4px;
+  max-height: 8px;
+}
+
+.map-tile-coord {
+  font-size: 3px;
+}
+
+.map-tile-marker {
+  font-size: 7px;
+}
+
+.map-tile-text-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 639px) {
+  .map-tile-text-wrap {
+    transform: scale(0.72);
+    transform-origin: center center;
+  }
+  .map-tile-alliance {
+    transform: scale(0.8);
+    transform-origin: top center;
+  }
+}
+
+@media (min-width: 480px) {
+  .map-tile-alliance {
+    font-size: 5px;
+    max-height: 7px;
+  }
+  .map-tile-type {
+    font-size: 5px;
+    max-height: 9px;
+  }
+  .map-tile-coord {
+    font-size: 4px;
+  }
+  .map-tile-marker {
+    font-size: 8px;
+  }
+}
+
+@media (min-width: 640px) {
+  .map-tile-alliance {
+    font-size: 6px;
+    max-height: 8px;
+  }
+  .map-tile-type {
+    font-size: 7px;
+    max-height: 11px;
+  }
+  .map-tile-coord {
+    font-size: 5px;
+  }
+  .map-tile-marker {
+    font-size: 10px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .map-tile-alliance {
+    font-size: 7px;
+  }
+  .map-tile-type {
+    font-size: 8px;
+  }
+  .map-tile-coord {
+    font-size: 6px;
+  }
+}
+
+/* Snapshot: no blur/animations for html2canvas */
+.capture-snapshot,
+.capture-snapshot * {
+  animation: none !important;
+  transition: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
