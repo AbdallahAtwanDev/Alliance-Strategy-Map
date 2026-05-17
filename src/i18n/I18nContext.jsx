@@ -15,7 +15,8 @@ export function I18nProvider({ children }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.language, lang);
     document.documentElement.lang = lang;
-    document.documentElement.dir = t.dir;
+    document.documentElement.dir = 'ltr';
+    document.body.classList.toggle('ui-rtl', t.dir === 'rtl');
   }, [lang, t.dir]);
 
   const translateTileType = (type) => t.tileTypes[type] || type;

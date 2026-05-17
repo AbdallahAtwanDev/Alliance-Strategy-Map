@@ -25,7 +25,7 @@ export default function TileModal({
         onClick={onClose}
       >
         <motion.div
-          className="glass-panel relative max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl p-5 sm:max-w-md sm:rounded-2xl sm:p-6 neon-border-cyan"
+          className="ui-chrome glass-panel relative max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl p-5 sm:max-w-md sm:rounded-2xl sm:p-6 neon-border-cyan"
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 40, opacity: 0 }}

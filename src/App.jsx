@@ -175,43 +175,41 @@ function Dashboard() {
     setModalIndex(null);
   };
 
-  const handleScreenshot = () => {
+  const handleScreenshot = async () => {
     setScreenshotBusy(true);
-    setTimeout(() => {
-      try {
-        const canvas = captureMapScreenshot({
-          tiles,
-          territories: { ...territories },
-          alliances,
-          markers: { ...markers },
-          allianceStats,
-          serverId,
-          markerLabels: {
-            attack: 'ATK',
-            defend: 'DEF',
-            target: 'TGT',
-          },
-          isRtl: t.dir === 'rtl',
-          labels: {
-            brandTitle: t.loginTitle,
-            brandSubtitle: t.loginSubtitle,
-            server: t.server,
-            exported: t.exportedAt,
-            leaderboard: t.leaderboard,
-            noStats: t.noTerritories,
-            tiles: t.tiles,
-            coal: t.coal,
-            rareSoil: t.rareSoil,
-          },
-        });
-        downloadCanvas(canvas, `alliance-map-${serverId}-${Date.now()}.png`);
-      } catch (err) {
-        console.error(err);
-        alert(t.screenshotError);
-      } finally {
-        setScreenshotBusy(false);
-      }
-    }, 200);
+    try {
+      const canvas = await captureMapScreenshot({
+        tiles,
+        territories: { ...territories },
+        alliances,
+        markers: { ...markers },
+        allianceStats,
+        getTileLabel: translateTileType,
+        serverId,
+        markerLabels: {
+          attack: 'ATK',
+          defend: 'DEF',
+          target: 'TGT',
+        },
+        labels: {
+          brandTitle: t.loginTitle,
+          brandSubtitle: t.loginSubtitle,
+          server: t.server,
+          exported: t.exportedAt,
+          leaderboard: t.leaderboard,
+          noStats: t.noTerritories,
+          tiles: t.tiles,
+          coal: t.coal,
+          rareSoil: t.rareSoil,
+        },
+      });
+      downloadCanvas(canvas, `alliance-map-${serverId}-${Date.now()}.png`);
+    } catch (err) {
+      console.error(err);
+      alert(t.screenshotError);
+    } finally {
+      setScreenshotBusy(false);
+    }
   };
 
   if (!auth?.loggedIn) {
@@ -239,14 +237,16 @@ function Dashboard() {
         <div className="absolute -right-40 bottom-0 h-72 w-72 rounded-full bg-violet-500/5 blur-3xl sm:h-96 sm:w-96" />
       </div>
 
-      <Header
-        auth={auth}
-        serverId={serverId}
-        onServerChange={handleServerChange}
-        onLogout={handleLogout}
-        onScreenshot={handleScreenshot}
-        screenshotBusy={screenshotBusy}
-      />
+      <div className="ui-chrome">
+        <Header
+          auth={auth}
+          serverId={serverId}
+          onServerChange={handleServerChange}
+          onLogout={handleLogout}
+          onScreenshot={handleScreenshot}
+          screenshotBusy={screenshotBusy}
+        />
+      </div>
 
       <motion.div
         className="relative mx-auto flex w-full max-w-[1920px] flex-1 flex-col gap-3 p-2 sm:gap-4 sm:p-4 lg:flex-row"
@@ -254,18 +254,20 @@ function Dashboard() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.35 }}
       >
-        <Sidebar
-          sidebarTab={sidebarTab}
-          setSidebarTab={setSidebarTab}
-          alliances={alliances}
-          selectedAllianceId={selectedAllianceId}
-          setSelectedAllianceId={setSelectedAllianceId}
-          updateAllianceName={updateAllianceName}
-          allianceStats={allianceStats}
-          structureFilter={structureFilter}
-          setStructureFilter={setStructureFilter}
-          onWipeServer={handleWipeServer}
-        />
+        <div className="ui-chrome">
+          <Sidebar
+            sidebarTab={sidebarTab}
+            setSidebarTab={setSidebarTab}
+            alliances={alliances}
+            selectedAllianceId={selectedAllianceId}
+            setSelectedAllianceId={setSelectedAllianceId}
+            updateAllianceName={updateAllianceName}
+            allianceStats={allianceStats}
+            structureFilter={structureFilter}
+            setStructureFilter={setStructureFilter}
+            onWipeServer={handleWipeServer}
+          />
+        </div>
 
         <MapViewport
           tiles={tiles}

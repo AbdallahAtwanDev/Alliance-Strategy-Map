@@ -83,6 +83,18 @@ body {
   pointer-events: none;
 }
 
+/* Map coordinates must never mirror when UI language is RTL */
+.map-viewport,
+.map-viewport *,
+.map-grid-inner,
+#capture-target {
+  direction: ltr !important;
+}
+
+body.ui-rtl .ui-chrome {
+  direction: rtl;
+}
+
 .map-viewport {
   cursor: grab;
   touch-action: none;

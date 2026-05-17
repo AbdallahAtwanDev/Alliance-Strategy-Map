@@ -21,7 +21,7 @@ export default function Login({ onLogin }) {
 
   return (
     <motion.div
-      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#030712] px-4"
+      className="ui-chrome relative flex min-h-screen items-center justify-center overflow-hidden bg-[#030712] px-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >

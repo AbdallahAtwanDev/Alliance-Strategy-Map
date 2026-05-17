@@ -208,6 +208,7 @@ export default function MapViewport({
         </p>
         <div
           ref={containerRef}
+          dir="ltr"
           className={`map-viewport h-full w-full overflow-hidden ${isPanning ? 'is-panning' : ''}`}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -225,7 +226,7 @@ export default function MapViewport({
               transition: isPanning ? 'none' : 'transform 0.15s ease-out',
             }}
           >
-            <div className="map-grid-inner grid gap-0 rounded-lg border border-[#164e63] bg-[#0f172a]">
+            <div dir="ltr" className="map-grid-inner grid gap-0 rounded-lg border border-[#164e63] bg-[#0f172a]">
               <div />
               {COLS.map((col) => (
                 <div
