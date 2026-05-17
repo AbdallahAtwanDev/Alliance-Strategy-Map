@@ -26,15 +26,38 @@ const TYPE_SHORT = {
   Capitol: 'CAPITOL',
 };
 
+function findAlliance(alliances, allianceId) {
+  const n = Number(allianceId);
+  if (!Number.isFinite(n)) return null;
+  return alliances.find((x) => Number(x.id) === n) || null;
+}
+
 function resolveAllianceId(territories, index) {
-  const raw = territories[index];
+  const raw = territories[index] ?? territories[String(index)];
   if (raw == null || raw === '') return null;
-  return Number(raw);
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function textOnBackground(hex) {
+  const c = String(hex || '#000000').replace('#', '');
+  if (c.length < 6) return '#ffffff';
+  const r = parseInt(c.slice(0, 2), 16) / 255;
+  const g = parseInt(c.slice(2, 4), 16) / 255;
+  const b = parseInt(c.slice(4, 6), 16) / 255;
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 0.62 ? '#111827' : '#ffffff';
 }
 
 function getTileColors(tile, allianceId, alliances) {
-  const a = allianceId != null ? alliances.find((x) => x.id === allianceId) : null;
-  if (a) return { bg: a.color, text: '#ffffff', border: '#e8e8e8' };
+  const a = allianceId != null ? findAlliance(alliances, allianceId) : null;
+  if (a) {
+    return {
+      bg: a.color,
+      text: textOnBackground(a.color),
+      border: '#e8e8e8',
+    };
+  }
   if (tile.type === 'Capitol') return { bg: '#ffffff', text: '#111827', border: '#9ca3af' };
   const z = ZONE_HEX[tile.zone];
   return { bg: z.bg, text: z.text, border: z.border };
@@ -49,45 +72,6 @@ function fitText(ctx, text, maxW) {
   return `${t}…`;
 }
 
-function wrapLines(ctx, text, maxW, maxLines = 2) {
-  const s = String(text || '').trim();
-  if (!s) return [];
-  const words = s.split(/\s+/);
-  const lines = [];
-  let line = '';
-
-  const pushLine = (l) => {
-    if (l && lines.length < maxLines) lines.push(l);
-  };
-
-  if (words.length <= 1) {
-    let chunk = '';
-    for (const ch of s) {
-      const test = chunk + ch;
-      if (ctx.measureText(test).width > maxW && chunk) {
-        pushLine(chunk);
-        chunk = ch;
-      } else {
-        chunk = test;
-      }
-    }
-    if (chunk) pushLine(chunk);
-    return lines.slice(0, maxLines);
-  }
-
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    if (ctx.measureText(test).width <= maxW) {
-      line = test;
-    } else {
-      pushLine(line);
-      line = word;
-    }
-  }
-  if (line) pushLine(line);
-  return lines.slice(0, maxLines).map((l) => fitText(ctx, l, maxW));
-}
-
 function drawCentered(ctx, text, cx, cy, font, color) {
   if (!text) return;
   ctx.font = font;
@@ -97,9 +81,9 @@ function drawCentered(ctx, text, cx, cy, font, color) {
   ctx.fillText(text, cx, cy);
 }
 
-function drawTile(ctx, px, py, tile, coord, allianceId, alliances, marker, getTileLabel, markerLabels) {
+function drawTile(ctx, px, py, tile, coord, allianceId, alliances, marker, markerLabels) {
   const colors = getTileColors(tile, allianceId, alliances);
-  const alliance = allianceId != null ? alliances.find((a) => a.id === allianceId) : null;
+  const alliance = allianceId != null ? findAlliance(alliances, allianceId) : null;
 
   ctx.fillStyle = colors.bg;
   ctx.fillRect(px, py, TILE, TILE);
@@ -118,14 +102,9 @@ function drawTile(ctx, px, py, tile, coord, allianceId, alliances, marker, getTi
   }
 
   const shortType = TYPE_SHORT[tile.type] || tile.type.slice(0, 6).toUpperCase();
-  const localType = getTileLabel(tile.type);
   const lines = [shortType];
-  if (localType && localType !== tile.type && localType !== shortType) {
-    const extra = wrapLines(ctx, localType, maxW, 1)[0];
-    if (extra) lines.push(extra);
-  }
 
-  const blockStart = alliance ? py + 30 : py + 22;
+  const blockStart = alliance ? py + 28 : py + 24;
   const lineH = 11;
   lines.forEach((line, i) => {
     drawCentered(
@@ -302,7 +281,6 @@ export function captureMapScreenshot(data) {
     alliances,
     markers,
     allianceStats,
-    getTileLabel,
     labels,
     serverId,
     markerLabels,
@@ -359,8 +337,7 @@ export function captureMapScreenshot(data) {
         getCoordinate(ri, ci),
         resolveAllianceId(territories, idx),
         alliances,
-        markers[idx],
-        getTileLabel,
+        markers[idx] ?? markers[String(idx)],
         markerLabels,
       );
     });

@@ -49,7 +49,7 @@ function computeAllianceStats(tiles, territories, alliances) {
   Object.entries(territories).forEach(([indexStr, allianceId]) => {
     const index = Number(indexStr);
     const tile = tiles[index];
-    const alliance = stats[allianceId];
+    const alliance = stats[Number(allianceId)];
     if (!tile || !alliance) return;
     alliance.tiles += 1;
     alliance.coal += tile.coal;
@@ -106,7 +106,11 @@ function Dashboard() {
   };
 
   const getAllianceById = useCallback(
-    (id) => alliances.find((a) => a.id === id),
+    (id) => {
+      const n = Number(id);
+      if (!Number.isFinite(n)) return undefined;
+      return alliances.find((a) => Number(a.id) === n);
+    },
     [alliances],
   );
 
@@ -181,7 +185,6 @@ function Dashboard() {
           alliances,
           markers: { ...markers },
           allianceStats,
-          getTileLabel: translateTileType,
           serverId,
           markerLabels: {
             attack: 'ATK',
