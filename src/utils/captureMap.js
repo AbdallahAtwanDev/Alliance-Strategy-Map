@@ -7,11 +7,23 @@ import {
   ZONE_HEX,
 } from '../constants.js';
 
-const TILE = 64;
-const LABEL = 28;
+const TILE = 72;
+const LABEL = 32;
 const PAD = 28;
+const SCALE = 2;
 const FONT = 'Tahoma, "Segoe UI", Arial, sans-serif';
 const MARKER_TEXT = { attack: 'ATK', defend: 'DEF', target: 'TGT' };
+
+const TYPE_SHORT = {
+  'Dig Site': 'DIG',
+  Village: 'VLG',
+  Town: 'TOWN',
+  Factory: 'FAC',
+  'Train Station': 'TRN',
+  'Launch Site': 'LCH',
+  'War Palace': 'PALACE',
+  Capitol: 'CAPITOL',
+};
 
 function findAlliance(alliances, allianceId) {
   const n = Number(allianceId);
@@ -26,288 +38,242 @@ function resolveAllianceId(territories, index) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function getTileStyle(tile, allianceId, alliances) {
+function getTileColors(tile, allianceId, alliances) {
   const alliance = allianceId != null ? findAlliance(alliances, allianceId) : null;
   if (alliance) {
-    return {
-      background: alliance.color,
-      color: '#ffffff',
-      border: '1px solid rgba(255,255,255,0.35)',
-    };
+    return { bg: alliance.color, text: '#ffffff', border: '#e8e8e8' };
   }
   if (tile.type === 'Capitol') {
-    return { background: '#ffffff', color: '#111827', border: '1px solid #d1d5db' };
+    return { bg: '#ffffff', text: '#111827', border: '#9ca3af' };
   }
   const z = ZONE_HEX[tile.zone];
-  return { background: z.bg, color: z.text, border: `1px solid ${z.border}` };
+  return { bg: z.bg, text: z.text, border: z.border };
 }
 
-function el(tag, style, text) {
-  const node = document.createElement(tag);
-  if (style) Object.assign(node.style, style);
-  if (text != null) node.textContent = text;
-  return node;
+function fitText(ctx, text, maxW) {
+  const s = String(text || '');
+  if (!s) return '';
+  if (ctx.measureText(s).width <= maxW) return s;
+  let t = s;
+  while (t.length > 1 && ctx.measureText(`${t}…`).width > maxW) t = t.slice(0, -1);
+  return `${t}…`;
 }
 
-function buildTileCell(tile, coord, allianceId, alliances, marker, getTileLabel, markerLabels) {
-  const styles = getTileStyle(tile, allianceId, alliances);
+function drawText(ctx, text, x, y, font, color, align = 'center') {
+  if (!text) return;
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y);
+}
+
+function drawTile(ctx, px, py, tile, coord, allianceId, alliances, marker, markerLabels) {
+  const colors = getTileColors(tile, allianceId, alliances);
   const alliance = allianceId != null ? findAlliance(alliances, allianceId) : null;
 
-  const cell = el('div', {
-    width: `${TILE}px`,
-    height: `${TILE}px`,
-    boxSizing: 'border-box',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    textAlign: 'center',
-    overflow: 'hidden',
-    fontFamily: FONT,
-    lineHeight: '1.1',
-    padding: '2px',
-    ...styles,
-  });
+  ctx.fillStyle = colors.bg;
+  ctx.fillRect(px, py, TILE, TILE);
+  ctx.strokeStyle = colors.border;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+
+  const cx = px + TILE / 2;
+  const maxW = TILE - 10;
+  const typeLabel = TYPE_SHORT[tile.type] || tile.type.slice(0, 6).toUpperCase();
+
+  let y = py + 14;
 
   if (alliance) {
-    cell.appendChild(
-      el('span', {
-        width: '100%',
-        fontSize: '9px',
-        fontWeight: '700',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-        textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-      }, alliance.name),
-    );
+    ctx.font = `bold 10px ${FONT}`;
+    const name = fitText(ctx, alliance.name, maxW);
+    drawText(ctx, name, cx, y, ctx.font, colors.text);
+    y += 14;
   }
 
-  cell.appendChild(
-    el('span', {
-      fontSize: '10px',
-      fontWeight: '600',
-      marginTop: alliance ? '2px' : '0',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-      width: '100%',
-    }, getTileLabel(tile.type)),
-  );
+  drawText(ctx, typeLabel, cx, alliance ? y + 4 : py + TILE / 2 - 4, `bold 12px ${FONT}`, colors.text);
 
   if (marker) {
     const mk = markerLabels?.[marker] || MARKER_TEXT[marker] || marker;
-    cell.appendChild(
-      el('span', {
-        fontSize: '8px',
-        fontWeight: '700',
-        marginTop: '1px',
-      }, `[${mk}]`),
-    );
+    drawText(ctx, `[${mk}]`, cx, py + TILE - 26, `bold 9px ${FONT}`, colors.text);
   }
 
-  cell.appendChild(
-    el('span', {
-      fontSize: '9px',
-      fontWeight: '700',
-      opacity: '0.85',
-      marginTop: 'auto',
-    }, coord),
-  );
-
-  return cell;
+  drawText(ctx, coord, cx, py + TILE - 12, `bold 10px ${FONT}`, colors.text);
 }
 
-function buildExportRoot(data) {
+function drawHeader(ctx, ox, labels, serverId) {
+  let y = PAD;
+  const tx = ox;
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold 22px ${FONT}`;
+  ctx.fillText(labels.brandTitle, tx, y);
+
+  const titleW = ctx.measureText(labels.brandTitle).width;
+  ctx.fillStyle = '#dc2626';
+  ctx.fillRect(tx + titleW + 10, y + 2, 38, 18);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold 10px ${FONT}`;
+  ctx.textAlign = 'center';
+  ctx.fillText('GOV', tx + titleW + 29, y + 8);
+
+  y += 30;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = `11px ${FONT}`;
+  ctx.fillText(labels.brandSubtitle, tx, y);
+
+  y += 20;
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = `12px ${FONT}`;
+  ctx.fillText(
+    `${labels.server}: ${serverId}  ·  ${labels.exported}: ${new Date().toLocaleString()}`,
+    tx,
+    y,
+  );
+}
+
+function drawStats(ctx, ox, sy, w, stats, labels) {
+  let y = sy + 20;
+
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(ox, y);
+  ctx.lineTo(ox + w, y);
+  ctx.stroke();
+
+  y += 16;
+  ctx.fillStyle = '#22d3ee';
+  ctx.font = `bold 17px ${FONT}`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(labels.leaderboard, ox, y);
+  y += 32;
+
+  if (!stats.length) {
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = `13px ${FONT}`;
+    ctx.fillText(labels.noStats, ox, y);
+    return;
+  }
+
+  [...stats]
+    .sort((a, b) => b.tiles - a.tiles)
+    .forEach((s, i) => {
+      const rowH = 40;
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(ox, y, w, rowH - 4);
+      ctx.strokeStyle = '#475569';
+      ctx.strokeRect(ox + 0.5, y + 0.5, w - 1, rowH - 5);
+
+      const cy = y + (rowH - 4) / 2;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+
+      ctx.font = `bold 12px ${FONT}`;
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(`#${i + 1}`, ox + 10, cy);
+
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(ox + 44, cy, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = `bold 13px ${FONT}`;
+      ctx.fillText(fitText(ctx, s.name, w * 0.32), ox + 58, cy);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = `11px ${FONT}`;
+      ctx.fillText(`${s.tiles} ${labels.tiles}`, ox + w * 0.48, cy);
+
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText(`${labels.coal}: ${s.coal.toLocaleString()}`, ox + w - 10, cy);
+      ctx.fillStyle = '#34d399';
+      ctx.fillText(`${labels.rareSoil}: ${s.rareSoil.toLocaleString()}`, ox + w - 10, cy + 14);
+
+      y += rowH;
+    });
+}
+
+export function captureMapScreenshot(data) {
   const {
     tiles,
     territories,
     alliances,
     markers,
     allianceStats,
-    getTileLabel,
     labels,
     serverId,
     markerLabels,
   } = data;
 
-  const root = el('div', {
-    position: 'fixed',
-    left: '-20000px',
-    top: '0',
-    zIndex: '-1',
-    direction: 'ltr',
-    background: '#030712',
-    color: '#e2e8f0',
-    fontFamily: FONT,
-    padding: `${PAD}px`,
-    boxSizing: 'border-box',
-  });
+  const gridW = LABEL + GRID_SIZE * TILE;
+  const gridH = LABEL + GRID_SIZE * TILE;
+  const headerExtra = 95;
+  const statsRows = Math.max(allianceStats.length, 1);
+  const statsH = 56 + statsRows * 40;
+  const totalW = PAD * 2 + gridW;
+  const totalH = PAD * 2 + headerExtra + gridH + statsH;
 
-  const header = el('div', { marginBottom: '16px', direction: 'ltr', textAlign: 'left' });
-  const titleRow = el('div', { display: 'flex', alignItems: 'center', gap: '10px' });
-  titleRow.appendChild(
-    el('span', { fontSize: '22px', fontWeight: '700', color: '#ffffff' }, labels.brandTitle),
-  );
-  titleRow.appendChild(
-    el('span', {
-      background: '#dc2626',
-      color: '#fff',
-      fontSize: '10px',
-      fontWeight: '700',
-      padding: '3px 10px',
-      borderRadius: '999px',
-    }, 'GOV'),
-  );
-  header.appendChild(titleRow);
-  header.appendChild(
-    el('div', { fontSize: '11px', color: '#94a3b8', marginTop: '6px' }, labels.brandSubtitle),
-  );
-  header.appendChild(
-    el('div', {
-      fontSize: '12px',
-      color: '#cbd5e1',
-      marginTop: '10px',
-    }, `${labels.server}: ${serverId}  ·  ${labels.exported}: ${new Date().toLocaleString()}`),
-  );
-  root.appendChild(header);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(totalW * SCALE);
+  canvas.height = Math.ceil(totalH * SCALE);
+  const ctx = canvas.getContext('2d', { alpha: false });
+  ctx.scale(SCALE, SCALE);
 
-  const grid = el('div', {
-    display: 'grid',
-    gridTemplateColumns: `${LABEL}px repeat(${GRID_SIZE}, ${TILE}px)`,
-    gridTemplateRows: `${LABEL}px repeat(${GRID_SIZE}, ${TILE}px)`,
-    border: '2px solid #0e7490',
-    background: '#0f172a',
-    direction: 'ltr',
-    width: 'fit-content',
-  });
+  ctx.fillStyle = '#030712';
+  ctx.fillRect(0, 0, totalW, totalH);
 
-  grid.appendChild(el('div', { width: `${LABEL}px`, height: `${LABEL}px` }));
+  const ox = PAD;
+  const gridY = PAD + headerExtra;
 
-  COLS.forEach((col) => {
-    grid.appendChild(
-      el('div', {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '12px',
-        fontWeight: '700',
-        color: '#22d3ee',
-      }, String(col)),
-    );
+  drawHeader(ctx, ox, labels, serverId);
+
+  const gx = ox;
+  const gy = gridY;
+
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(gx, gy, gridW, gridH);
+  ctx.strokeStyle = '#0e7490';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(gx, gy, gridW, gridH);
+
+  COLS.forEach((col, i) => {
+    const x = gx + LABEL + i * TILE;
+    drawText(ctx, String(col), x + TILE / 2, gy + LABEL / 2, `bold 13px ${FONT}`, '#22d3ee');
   });
 
   ROWS.forEach((row, ri) => {
-    grid.appendChild(
-      el('div', {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '12px',
-        fontWeight: '700',
-        color: '#22d3ee',
-      }, row),
-    );
+    const y = gy + LABEL + ri * TILE;
+    drawText(ctx, row, gx + LABEL / 2, y + TILE / 2, `bold 13px ${FONT}`, '#22d3ee');
 
     COLS.forEach((_, ci) => {
       const idx = getTileIndex(ri, ci);
-      grid.appendChild(
-        buildTileCell(
-          tiles[idx],
-          getCoordinate(ri, ci),
-          resolveAllianceId(territories, idx),
-          alliances,
-          markers[idx] ?? markers[String(idx)],
-          getTileLabel,
-          markerLabels,
-        ),
+      drawTile(
+        ctx,
+        gx + LABEL + ci * TILE,
+        y,
+        tiles[idx],
+        getCoordinate(ri, ci),
+        resolveAllianceId(territories, idx),
+        alliances,
+        markers[idx] ?? markers[String(idx)],
+        markerLabels,
       );
     });
   });
 
-  root.appendChild(grid);
+  drawStats(ctx, ox, gridY + gridH, gridW, allianceStats, labels);
 
-  const statsWrap = el('div', {
-    marginTop: '20px',
-    width: `${LABEL + GRID_SIZE * TILE}px`,
-    direction: 'ltr',
-    textAlign: 'left',
-    borderTop: '2px solid #334155',
-    paddingTop: '14px',
-  });
-  const statsTitle = el('div', {
-    fontSize: '17px',
-    fontWeight: '700',
-    color: '#22d3ee',
-    marginBottom: '12px',
-  }, labels.leaderboard);
-  statsWrap.appendChild(statsTitle);
-
-  const sorted = [...allianceStats].sort((a, b) => b.tiles - a.tiles);
-  if (!sorted.length) {
-    statsWrap.appendChild(
-      el('div', { fontSize: '13px', color: '#94a3b8' }, labels.noStats),
-    );
-  } else {
-    sorted.forEach((s, i) => {
-      const row = el('div', {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        background: '#1e293b',
-        border: '1px solid #475569',
-        borderRadius: '4px',
-        padding: '8px 10px',
-        marginBottom: '6px',
-        fontSize: '12px',
-      });
-      row.appendChild(el('span', { color: '#64748b', fontWeight: '700', minWidth: '24px' }, `#${i + 1}`));
-      row.appendChild(
-        el('span', {
-          width: '14px',
-          height: '14px',
-          borderRadius: '50%',
-          background: s.color,
-          border: '1px solid #fff',
-          flexShrink: '0',
-        }),
-      );
-      row.appendChild(
-        el('span', { fontWeight: '700', color: '#f8fafc', flex: '1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, s.name),
-      );
-      row.appendChild(
-        el('span', { color: '#94a3b8', whiteSpace: 'nowrap' }, `${s.tiles} ${labels.tiles}`),
-      );
-      row.appendChild(
-        el('span', { color: '#fbbf24', whiteSpace: 'nowrap' }, `${labels.coal}: ${s.coal.toLocaleString()}`),
-      );
-      row.appendChild(
-        el('span', { color: '#34d399', whiteSpace: 'nowrap' }, `${labels.rareSoil}: ${s.rareSoil.toLocaleString()}`),
-      );
-      statsWrap.appendChild(row);
-    });
-  }
-
-  root.appendChild(statsWrap);
-  return root;
-}
-
-export async function captureMapScreenshot(data) {
-  const { default: html2canvas } = await import('html2canvas');
-  const root = buildExportRoot(data);
-  document.body.appendChild(root);
-
-  try {
-    if (document.fonts?.ready) await document.fonts.ready;
-    return await html2canvas(root, {
-      backgroundColor: '#030712',
-      scale: 2,
-      logging: false,
-      useCORS: true,
-    });
-  } finally {
-    root.remove();
-  }
+  return canvas;
 }
 
 export function downloadCanvas(canvas, filename) {

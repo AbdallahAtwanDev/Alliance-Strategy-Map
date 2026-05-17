@@ -175,16 +175,15 @@ function Dashboard() {
     setModalIndex(null);
   };
 
-  const handleScreenshot = async () => {
+  const handleScreenshot = () => {
     setScreenshotBusy(true);
     try {
-      const canvas = await captureMapScreenshot({
+      const canvas = captureMapScreenshot({
         tiles,
         territories: { ...territories },
         alliances,
         markers: { ...markers },
         allianceStats,
-        getTileLabel: translateTileType,
         serverId,
         markerLabels: {
           attack: 'ATK',
