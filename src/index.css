@@ -1,0 +1,107 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-orbitron: 'Orbitron', sans-serif;
+  --font-rajdhani: 'Rajdhani', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-rajdhani);
+  background: #030712;
+  color: #e2e8f0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.font-orbitron {
+  font-family: var(--font-orbitron);
+}
+
+.glass-panel {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.glass-login {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(34, 211, 238, 0.15);
+  box-shadow:
+    0 0 60px rgba(34, 211, 238, 0.08),
+    0 25px 50px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.neon-text-cyan {
+  text-shadow: 0 0 20px rgba(34, 211, 238, 0.6);
+}
+
+.neon-border-cyan {
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.35);
+}
+
+@keyframes neon-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 8px rgba(34, 211, 238, 0.6),
+      0 0 20px rgba(34, 211, 238, 0.3),
+      inset 0 0 8px rgba(34, 211, 238, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 16px rgba(34, 211, 238, 0.9),
+      0 0 32px rgba(34, 211, 238, 0.5),
+      inset 0 0 12px rgba(34, 211, 238, 0.2);
+  }
+}
+
+.tile-highlight-match {
+  animation: neon-pulse 1.2s ease-in-out infinite;
+  z-index: 20 !important;
+  position: relative;
+}
+
+.tile-filter-dim {
+  filter: blur(2px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.map-viewport {
+  cursor: grab;
+  touch-action: none;
+}
+
+.map-viewport.is-panning {
+  cursor: grabbing;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
