@@ -185,11 +185,9 @@ function Dashboard() {
         markers: { ...markers },
         allianceStats,
         serverId,
-        markerLabels: {
-          attack: 'ATK',
-          defend: 'DEF',
-          target: 'TGT',
-        },
+        getTileLabel: (type) => t.tileTypesExport[type] || translateTileType(type),
+        markerLabels: t.markersExport,
+        isRtl: t.dir === 'rtl',
         labels: {
           brandTitle: t.loginTitle,
           brandSubtitle: t.loginSubtitle,

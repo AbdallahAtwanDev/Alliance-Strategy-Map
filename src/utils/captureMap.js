@@ -12,18 +12,7 @@ const LABEL = 32;
 const PAD = 28;
 const SCALE = 2;
 const FONT = 'Tahoma, "Segoe UI", Arial, sans-serif';
-const MARKER_TEXT = { attack: 'ATK', defend: 'DEF', target: 'TGT' };
-
-const TYPE_SHORT = {
-  'Dig Site': 'DIG',
-  Village: 'VLG',
-  Town: 'TOWN',
-  Factory: 'FAC',
-  'Train Station': 'TRN',
-  'Launch Site': 'LCH',
-  'War Palace': 'PALACE',
-  Capitol: 'CAPITOL',
-};
+const MARKER_FALLBACK = { attack: 'ATK', defend: 'DEF', target: 'TGT' };
 
 function findAlliance(alliances, allianceId) {
   const n = Number(allianceId);
@@ -59,16 +48,31 @@ function fitText(ctx, text, maxW) {
   return `${t}…`;
 }
 
-function drawText(ctx, text, x, y, font, color, align = 'center') {
+function drawText(ctx, text, x, y, font, color, align = 'center', rtl = false) {
   if (!text) return;
+  const prevDir = ctx.direction;
+  if (rtl) ctx.direction = 'rtl';
   ctx.font = font;
   ctx.fillStyle = color;
   ctx.textAlign = align;
   ctx.textBaseline = 'middle';
   ctx.fillText(text, x, y);
+  ctx.direction = prevDir;
 }
 
-function drawTile(ctx, px, py, tile, coord, allianceId, alliances, marker, markerLabels) {
+function drawTile(
+  ctx,
+  px,
+  py,
+  tile,
+  coord,
+  allianceId,
+  alliances,
+  marker,
+  getTileLabel,
+  markerLabels,
+  isRtl,
+) {
   const colors = getTileColors(tile, allianceId, alliances);
   const alliance = allianceId != null ? findAlliance(alliances, allianceId) : null;
 
@@ -80,47 +84,68 @@ function drawTile(ctx, px, py, tile, coord, allianceId, alliances, marker, marke
 
   const cx = px + TILE / 2;
   const maxW = TILE - 10;
-  const typeLabel = TYPE_SHORT[tile.type] || tile.type.slice(0, 6).toUpperCase();
+  const typeFont = isRtl ? `bold 11px ${FONT}` : `bold 12px ${FONT}`;
+  ctx.font = typeFont;
+  const typeLabel = fitText(
+    ctx,
+    getTileLabel ? getTileLabel(tile.type) : tile.type,
+    maxW,
+  );
 
   let y = py + 14;
 
   if (alliance) {
     ctx.font = `bold 10px ${FONT}`;
     const name = fitText(ctx, alliance.name, maxW);
-    drawText(ctx, name, cx, y, ctx.font, colors.text);
+    drawText(ctx, name, cx, y, ctx.font, colors.text, 'center', isRtl);
     y += 14;
   }
 
-  drawText(ctx, typeLabel, cx, alliance ? y + 4 : py + TILE / 2 - 4, `bold 12px ${FONT}`, colors.text);
+  drawText(
+    ctx,
+    typeLabel,
+    cx,
+    alliance ? y + 4 : py + TILE / 2 - 4,
+    typeFont,
+    colors.text,
+    'center',
+    isRtl,
+  );
 
   if (marker) {
-    const mk = markerLabels?.[marker] || MARKER_TEXT[marker] || marker;
-    drawText(ctx, `[${mk}]`, cx, py + TILE - 26, `bold 9px ${FONT}`, colors.text);
+    const mk = markerLabels?.[marker] || MARKER_FALLBACK[marker] || marker;
+    drawText(ctx, `[${mk}]`, cx, py + TILE - 26, `bold 9px ${FONT}`, colors.text, 'center', isRtl);
   }
 
   drawText(ctx, coord, cx, py + TILE - 12, `bold 10px ${FONT}`, colors.text);
 }
 
-function drawHeader(ctx, ox, labels, serverId) {
+function drawHeader(ctx, ox, labels, serverId, gridW, isRtl) {
   let y = PAD;
-  const tx = ox;
+  const tx = isRtl ? ox + gridW : ox;
+  const prevDir = ctx.direction;
 
-  ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
+  ctx.textAlign = isRtl ? 'right' : 'left';
+  if (isRtl) ctx.direction = 'rtl';
+
   ctx.fillStyle = '#ffffff';
   ctx.font = `bold 22px ${FONT}`;
   ctx.fillText(labels.brandTitle, tx, y);
 
-  const titleW = ctx.measureText(labels.brandTitle).width;
-  ctx.fillStyle = '#dc2626';
-  ctx.fillRect(tx + titleW + 10, y + 2, 38, 18);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `bold 10px ${FONT}`;
-  ctx.textAlign = 'center';
-  ctx.fillText('GOV', tx + titleW + 29, y + 8);
+  if (!isRtl) {
+    const titleW = ctx.measureText(labels.brandTitle).width;
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(ox + titleW + 10, y + 2, 38, 18);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold 10px ${FONT}`;
+    ctx.textAlign = 'center';
+    ctx.fillText('GOV', ox + titleW + 29, y + 8);
+    ctx.textAlign = 'left';
+  }
 
   y += 30;
-  ctx.textAlign = 'left';
+  ctx.textAlign = isRtl ? 'right' : 'left';
   ctx.fillStyle = '#94a3b8';
   ctx.font = `11px ${FONT}`;
   ctx.fillText(labels.brandSubtitle, tx, y);
@@ -133,9 +158,11 @@ function drawHeader(ctx, ox, labels, serverId) {
     tx,
     y,
   );
+
+  ctx.direction = prevDir;
 }
 
-function drawStats(ctx, ox, sy, w, stats, labels) {
+function drawStats(ctx, ox, sy, w, stats, labels, isRtl) {
   let y = sy + 20;
 
   ctx.strokeStyle = '#334155';
@@ -148,15 +175,17 @@ function drawStats(ctx, ox, sy, w, stats, labels) {
   y += 16;
   ctx.fillStyle = '#22d3ee';
   ctx.font = `bold 17px ${FONT}`;
-  ctx.textAlign = 'left';
+  ctx.textAlign = isRtl ? 'right' : 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText(labels.leaderboard, ox, y);
+  if (isRtl) ctx.direction = 'rtl';
+  ctx.fillText(labels.leaderboard, isRtl ? ox + w : ox, y);
   y += 32;
 
   if (!stats.length) {
     ctx.fillStyle = '#94a3b8';
     ctx.font = `13px ${FONT}`;
-    ctx.fillText(labels.noStats, ox, y);
+    ctx.fillText(labels.noStats, isRtl ? ox + w : ox, y);
+    ctx.direction = 'ltr';
     return;
   }
 
@@ -171,36 +200,71 @@ function drawStats(ctx, ox, sy, w, stats, labels) {
 
       const cy = y + (rowH - 4) / 2;
       ctx.textBaseline = 'middle';
-      ctx.textAlign = 'left';
 
-      ctx.font = `bold 12px ${FONT}`;
-      ctx.fillStyle = '#64748b';
-      ctx.fillText(`#${i + 1}`, ox + 10, cy);
+      if (isRtl) {
+        ctx.textAlign = 'right';
+        ctx.font = `bold 12px ${FONT}`;
+        ctx.fillStyle = '#64748b';
+        ctx.fillText(`#${i + 1}`, ox + w - 10, cy);
 
-      ctx.fillStyle = s.color;
-      ctx.beginPath();
-      ctx.arc(ox + 44, cy, 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+        ctx.fillStyle = s.color;
+        ctx.beginPath();
+        ctx.arc(ox + w - 36, cy, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
 
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = `bold 13px ${FONT}`;
-      ctx.fillText(fitText(ctx, s.name, w * 0.32), ox + 58, cy);
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = `bold 13px ${FONT}`;
+        ctx.fillText(fitText(ctx, s.name, w * 0.3), ox + w - 50, cy);
 
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = `11px ${FONT}`;
-      ctx.fillText(`${s.tiles} ${labels.tiles}`, ox + w * 0.48, cy);
+        ctx.fillStyle = '#34d399';
+        ctx.font = `11px ${FONT}`;
+        ctx.fillText(
+          `${labels.rareSoil}: ${s.rareSoil.toLocaleString()}`,
+          ox + w - 50,
+          cy + 12,
+        );
 
-      ctx.textAlign = 'right';
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillText(`${labels.coal}: ${s.coal.toLocaleString()}`, ox + w - 10, cy);
-      ctx.fillStyle = '#34d399';
-      ctx.fillText(`${labels.rareSoil}: ${s.rareSoil.toLocaleString()}`, ox + w - 10, cy + 14);
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText(`${labels.coal}: ${s.coal.toLocaleString()}`, ox + 10, cy);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(`${s.tiles} ${labels.tiles}`, ox + 10, cy + 12);
+      } else {
+        ctx.textAlign = 'left';
+        ctx.font = `bold 12px ${FONT}`;
+        ctx.fillStyle = '#64748b';
+        ctx.fillText(`#${i + 1}`, ox + 10, cy);
+
+        ctx.fillStyle = s.color;
+        ctx.beginPath();
+        ctx.arc(ox + 44, cy, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = `bold 13px ${FONT}`;
+        ctx.fillText(fitText(ctx, s.name, w * 0.32), ox + 58, cy);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = `11px ${FONT}`;
+        ctx.fillText(`${s.tiles} ${labels.tiles}`, ox + w * 0.48, cy);
+
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText(`${labels.coal}: ${s.coal.toLocaleString()}`, ox + w - 10, cy);
+        ctx.fillStyle = '#34d399';
+        ctx.fillText(`${labels.rareSoil}: ${s.rareSoil.toLocaleString()}`, ox + w - 10, cy + 14);
+      }
 
       y += rowH;
     });
+
+  ctx.direction = 'ltr';
 }
 
 export function captureMapScreenshot(data) {
@@ -213,6 +277,8 @@ export function captureMapScreenshot(data) {
     labels,
     serverId,
     markerLabels,
+    getTileLabel,
+    isRtl = false,
   } = data;
 
   const gridW = LABEL + GRID_SIZE * TILE;
@@ -235,7 +301,7 @@ export function captureMapScreenshot(data) {
   const ox = PAD;
   const gridY = PAD + headerExtra;
 
-  drawHeader(ctx, ox, labels, serverId);
+  drawHeader(ctx, ox, labels, serverId, gridW, isRtl);
 
   const gx = ox;
   const gy = gridY;
@@ -266,12 +332,14 @@ export function captureMapScreenshot(data) {
         resolveAllianceId(territories, idx),
         alliances,
         markers[idx] ?? markers[String(idx)],
+        getTileLabel,
         markerLabels,
+        isRtl,
       );
     });
   });
 
-  drawStats(ctx, ox, gridY + gridH, gridW, allianceStats, labels);
+  drawStats(ctx, ox, gridY + gridH, gridW, allianceStats, labels, isRtl);
 
   return canvas;
 }
